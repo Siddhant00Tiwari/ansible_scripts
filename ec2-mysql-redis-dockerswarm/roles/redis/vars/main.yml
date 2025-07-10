@@ -1,0 +1,4 @@
+# roles/redis/vars/main.yml
+---
+redis_service_name: "{{ 'redis6' if ansible_os_family == 'RedHat' else 'redis-server' }}"
+redis_config_path: "{{ '/etc/redis6/redis6.conf' if ansible_os_family == 'RedHat' else '/etc/redis/redis.conf' }}"

@@ -1,0 +1,37 @@
+# roles/redis/tasks/main.yml
+---
+- name: Install Redis (Amazon Linux 2023)
+  dnf:
+    name: redis6
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install Redis (Ubuntu/Debian)
+  apt:
+    name: redis-server
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Configure Redis to bind to all interfaces (Amazon Linux)
+  lineinfile:
+    path: "{{ redis_config_path }}"
+    regexp: '^bind 127\.0\.0\.1'
+    line: 'bind {{ redis_bind_address }}'
+    backup: yes
+  when: ansible_os_family == "RedHat"
+  notify: restart redis
+
+- name: Configure Redis to bind to all interfaces (Debian)
+  lineinfile:
+    path: "{{ redis_config_path }}"
+    regexp: '^bind 127\.0\.0\.1'
+    line: 'bind {{ redis_bind_address }}'
+    backup: yes
+  when: ansible_os_family == "Debian"
+  notify: restart redis
+
+- name: Start and enable Redis service
+  systemd:
+    name: "{{ redis_service_name }}"
+    state: started
+    enabled: yes

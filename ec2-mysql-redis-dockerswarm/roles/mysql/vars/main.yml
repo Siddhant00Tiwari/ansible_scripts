@@ -1,0 +1,4 @@
+# roles/mysql/vars/main.yml
+---
+mysql_service_name: "{{ 'mysqld' if ansible_os_family == 'RedHat' else 'mysql' }}"
+mysql_socket_path: "{{ '/var/lib/mysql/mysql.sock' if ansible_os_family == 'RedHat' else '/var/run/mysqld/mysqld.sock' }}"

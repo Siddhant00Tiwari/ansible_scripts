@@ -1,0 +1,4 @@
+---
+mysql_root_password: "StrongPass123!"
+redis_bind_address: "0.0.0.0"
+docker_swarm_enabled: true

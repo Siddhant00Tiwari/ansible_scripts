@@ -1,0 +1,9 @@
+# roles/docker/vars/main.yml
+---
+docker_packages_redhat:
+  - docker
+
+docker_packages_debian:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io

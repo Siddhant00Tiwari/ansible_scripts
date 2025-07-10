@@ -1,0 +1,89 @@
+# roles/mysql/tasks/main.yml
+---
+- name: Download MySQL repository RPM using wget (Amazon Linux)
+  command: wget -O /tmp/mysql80-community-release-el9-1.noarch.rpm https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+  args:
+    creates: /tmp/mysql80-community-release-el9-1.noarch.rpm
+  when: ansible_os_family == "RedHat"
+
+- name: Install MySQL repository (Amazon Linux)
+  dnf:
+    name: /tmp/mysql80-community-release-el9-1.noarch.rpm
+    state: present
+    disable_gpg_check: yes
+  when: ansible_os_family == "RedHat"
+
+- name: Import MySQL public key (Amazon Linux)
+  rpm_key:
+    key: https://repo.mysql.com/RPM-GPG-KEY-mysql-2023
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install MySQL server (Amazon Linux)
+  dnf:
+    name: mysql-community-server
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install MySQL client (Amazon Linux)
+  dnf:
+    name: mysql-community-client
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install Python pip (Amazon Linux)
+  dnf:
+    name: python3-pip
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install PyMySQL via pip (Amazon Linux)
+  pip:
+    name: PyMySQL
+    executable: pip3
+  when: ansible_os_family == "RedHat"
+
+- name: Install MySQL server (Ubuntu/Debian)
+  apt:
+    name:
+      - mysql-server
+      - mysql-client
+      - python3-pymysql
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Start and enable MySQL service
+  systemd:
+    name: "{{ mysql_service_name }}"
+    state: started
+    enabled: yes
+
+- name: Get temporary MySQL root password (Amazon Linux)
+  shell: grep 'temporary password' /var/log/mysqld.log | awk '{print $NF}' | tail -1
+  register: mysql_temp_password
+  when: ansible_os_family == "RedHat"
+  ignore_errors: yes
+
+- name: Set MySQL root password (Amazon Linux)
+  shell: |
+    mysql -uroot -p'{{ mysql_temp_password.stdout }}' --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ mysql_root_password }}';"
+  when: 
+    - ansible_os_family == "RedHat"
+    - mysql_temp_password.stdout != ""
+  ignore_errors: yes
+
+- name: Set MySQL root password (Debian)
+  mysql_user:
+    name: root
+    password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket_path }}"
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Create MySQL configuration for root
+  template:
+    src: my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: '0600'

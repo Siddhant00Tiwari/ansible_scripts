@@ -1,0 +1,68 @@
+---
+- name: Install snapd
+  package:
+    name: snapd
+    state: present
+
+- name: Install snapd core
+  snap:
+    name: core
+    state: present
+
+- name: Refresh snap
+  command: snap refresh core
+  changed_when: false
+
+- name: Install certbot via snap
+  snap:
+    name: certbot
+    classic: yes
+    state: present
+
+- name: Create symlink for certbot
+  file:
+    src: /snap/bin/certbot
+    dest: /usr/bin/certbot
+    state: link
+
+- name: Check if SSL certificate already exists
+  stat:
+    path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+  register: ssl_cert_check
+
+- name: Obtain SSL certificate with Certbot
+  command: >
+    certbot certonly --webroot 
+    -w /var/www/html 
+    -d {{ domain_name }} 
+    --email {{ email }} 
+    --agree-tos 
+    --non-interactive
+  register: certbot_result
+  when: not ssl_cert_check.stat.exists
+
+- name: Set fact if certificate was obtained
+  set_fact:
+    ssl_certificate_obtained: true
+  when: certbot_result is succeeded or ssl_cert_check.stat.exists
+
+- name: Create systemd timer for certbot renewal
+  template:
+    src: certbot-renewal.timer.j2
+    dest: /etc/systemd/system/certbot-renewal.timer
+    mode: '0644'
+  notify: reload systemd
+
+- name: Create systemd service for certbot renewal
+  template:
+    src: certbot-renewal.service.j2
+    dest: /etc/systemd/system/certbot-renewal.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable and start certbot renewal timer
+  systemd:
+    name: certbot-renewal.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes

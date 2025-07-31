@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  api:
+    image: {{ api_image }}
+    ports:
+      - {{ api_port }}:{{ api_port }}
+    environment:
+      NODE_ENV: {{ node_env }}
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager

@@ -1,0 +1,3 @@
+---
+certbot_renewal_frequency: "*-*-* 00,12:00:00"
+certbot_renewal_delay: 3600

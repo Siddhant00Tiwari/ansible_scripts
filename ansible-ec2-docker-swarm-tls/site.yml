@@ -1,0 +1,55 @@
+---
+- name: Deploy Docker Swarm with Nginx Reverse Proxy and SSL
+  hosts: webservers
+  become: yes
+  
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Update dnf cache
+      dnf:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
+  roles:
+    - docker
+    - nginx
+    - certbot
+
+  post_tasks:
+    - name: Update Nginx configuration with SSL
+      include_role:
+        name: nginx
+        tasks_from: main
+      vars:
+        ssl_certificate_obtained: true
+      when: ssl_certificate_obtained is defined and ssl_certificate_obtained
+
+    - name: Display deployment information
+      debug:
+        msg: |
+          Deployment completed successfully.
+          
+          Your application should be accessible at:
+          - HTTP: http://{{ domain_name }} (redirects to HTTPS)
+          - HTTPS: https://{{ domain_name }}
+          
+          Docker Swarm Commands:
+          - View services: docker service ls
+          - View stack: docker stack ls
+          - Remove stack: docker stack rm {{ docker_stack_name | default('myapp') }}
+          - Update stack: docker stack deploy -c {{ docker_stack_path | default('/opt/docker-stack') }}/docker-swarm.yml {{ docker_stack_name | default('myapp') }}
+          
+          Nginx Commands:
+          - Test config: nginx -t
+          - Reload: systemctl reload nginx
+          - Status: systemctl status nginx
+          
+          SSL Certificate:
+          - Certificate renewal is automated via systemd timer
+          - Manual renewal: certbot renew
+          - Certificate location: /etc/letsencrypt/live/{{ domain_name }}/

@@ -1,0 +1,99 @@
+---
+- name: Install Docker (Amazon Linux)
+  dnf:
+    name: "{{ docker_packages_redhat }}"
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install prerequisites for Docker (Debian)
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+      - python3-docker
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install Python packages for Docker management (with break-system-packages)
+  pip:
+    name:
+      - jsondiff
+      - docker
+    state: present
+    break_system_packages: yes
+
+- name: Add Docker GPG key (Ubuntu/Debian)
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Add Docker repository (Ubuntu/Debian)
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install Docker CE (Debian)
+  package:
+    name: "{{ docker_packages_debian }}"
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add current user to docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
+
+- name: Initialize Docker Swarm on single node
+  command: docker swarm init --advertise-addr {{ ansible_default_ipv4.address }}
+  register: swarm_init_result
+  ignore_errors: yes
+  when: docker_swarm_enabled
+
+- name: Display Docker Swarm status
+  command: docker node ls
+  register: swarm_status
+  when: docker_swarm_enabled
+
+- name: Show Docker Swarm nodes
+  debug:
+    msg: "{{ swarm_status.stdout_lines }}"
+  when: docker_swarm_enabled
+
+- name: Create directory for Docker stack
+  file:
+    path: "{{ docker_stack_path }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: docker
+    mode: '0755'
+  when: docker_swarm_enabled
+
+- name: Copy Docker Swarm stack file
+  template:
+    src: docker-swarm.yml.j2
+    dest: "{{ docker_stack_path }}/docker-swarm.yml"
+    owner: "{{ ansible_user }}"
+    group: docker
+    mode: '0644'
+  when: docker_swarm_enabled
+
+- name: Deploy Docker stack
+  docker_stack:
+    state: present
+    name: "{{ docker_stack_name }}"
+    compose:
+      - "{{ docker_stack_path }}/docker-swarm.yml"
+  when: docker_swarm_enabled

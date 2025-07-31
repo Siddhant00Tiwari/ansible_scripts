@@ -1,0 +1,13 @@
+---
+docker_packages_redhat:
+  - docker
+  - docker-compose
+
+docker_packages_debian:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+
+docker_swarm_enabled: true
+docker_stack_name: myapp
+docker_stack_path: /opt/docker-stack

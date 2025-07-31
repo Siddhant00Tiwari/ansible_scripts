@@ -1,0 +1,9 @@
+---
+# Domain and SSL Configuration
+domain_name: "your domain name"
+email: "your email address"
+
+# Docker Configuration
+api_image: "your docker image"
+api_port: 3000
+node_env: "development"

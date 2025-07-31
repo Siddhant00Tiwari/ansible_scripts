@@ -1,0 +1,10 @@
+[Unit]
+Description=Certbot Renewal Timer
+
+[Timer]
+OnCalendar={{ certbot_renewal_frequency }}
+RandomizedDelaySec={{ certbot_renewal_delay }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target
